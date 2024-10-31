@@ -1,3 +1,7 @@
+## 0.1.1.8 (2024-10-31)
+
+ * Support more modern GHCs more directly, and include nonmoving gc stats. ([#53](https://github.com/haskell-github-trust/ekg-core/pull/53))
+
 ## 0.1.1.7 (2019-03-15)
 
  * Fix two bugs in `cbits` relating to distribution values
