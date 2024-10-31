@@ -388,6 +388,10 @@ createDistribution name store = do
 --
 -- [@rts.gc.max_bytes_used@] Maximum number of live bytes seen so far
 --
+-- [@rts.gc.max_large_bytes_used@] Maximum number of live bytes seen so far just in large ojects
+--
+-- [@rts.gc.max_compact_bytes_used@] Maximum number of live bytes seen so far just in compact regions
+--
 -- [@rts.gc.current_bytes_used@] Current number of live bytes
 --
 -- [@rts.gc.current_bytes_slop@] Current number of bytes lost to slop
@@ -408,7 +412,22 @@ createDistribution name store = do
 -- the most active GC thread each GC. The ratio of
 -- @par_tot_bytes_copied@ divided by @par_max_bytes_copied@ approaches
 -- 1 for a maximally sequential run and approaches the number of
--- threads (set by the RTS flag @-N@) for a maximally parallel run.
+-- threads (set by the RTS flag @-N@) for a maximally parallel run. Deprecated by
+-- GHC in later versions.
+--
+-- [@rts.gc.par_balanced_bytes_copied@] Sum of balanced data copied by all threads in parallel GC, across all parallel GCs.
+--
+-- [@rts.gc.nm.sync_cpu_ms@] The total CPU time used during the post-mark pause phase of the concurrent nonmoving GC.
+--
+-- [@rts.gc.nm.sync_elapsed_ms@] The total time elapsed during the post-mark pause phase of the concurrent nonmoving GC.
+--
+-- [@rts.gc.nm.sync_max_elapsed_ms@] The maximum elapsed length of any post-mark pause phase of the concurrent nonmoving GC.
+--
+-- [@rts.gc.nm.cpu_ms@] The total CPU time used by the nonmoving GC.
+--
+-- [@rts.gc.nm.elapsed_ms@] The total time elapsed during which there is a nonmoving GC active.
+--
+-- [@rts.gc.nm.max_elapsed_ms@] The maximum time elapsed during any nonmoving GC cycle.
 registerGcMetrics :: Store -> IO ()
 registerGcMetrics =
     registerGroup
@@ -430,6 +449,8 @@ registerGcMetrics =
      , ("rts.gc.cpu_ms"                   , Counter . nsToMs . Stats.cpu_ns)
      , ("rts.gc.wall_ms"                  , Counter . nsToMs . Stats.elapsed_ns)
      , ("rts.gc.max_bytes_used"           , Gauge . fromIntegral . Stats.max_live_bytes)
+     , ("rts.gc.max_large_bytes_used"     , Gauge . fromIntegral . Stats.max_large_objects_bytes)
+     , ("rts.gc.max_compact_bytes_used"   , Gauge . fromIntegral . Stats.max_compact_bytes)
      , ("rts.gc.current_bytes_used"       , Gauge . fromIntegral . Stats.gcdetails_live_bytes . Stats.gc)
      , ("rts.gc.current_bytes_slop"       , Gauge . fromIntegral . Stats.gcdetails_slop_bytes . Stats.gc)
      , ("rts.gc.max_bytes_slop"           , Gauge . fromIntegral . Stats.max_slop_bytes)
@@ -437,6 +458,17 @@ registerGcMetrics =
      , ("rts.gc.par_tot_bytes_copied"     , Gauge . fromIntegral . Stats.par_copied_bytes)
      , ("rts.gc.par_avg_bytes_copied"     , Gauge . fromIntegral . Stats.par_copied_bytes)
      , ("rts.gc.par_max_bytes_copied"     , Gauge . fromIntegral . Stats.cumulative_par_max_copied_bytes)
+#if MIN_VERSION_base(4,11,0)
+     , ("rts.gc.par_balanced_bytes_copied", Gauge . fromIntegral . Stats.cumulative_par_balanced_copied_bytes)
+#if MIN_VERSION_base(4,15,0)
+     , ("rts.gc.nm.sync_cpu_ms"           , Counter . nsToMs . Stats.nonmoving_gc_sync_cpu_ns)
+     , ("rts.gc.nm.sync_elapsed_ms"       , Counter . nsToMs . Stats.nonmoving_gc_sync_elapsed_ns)
+     , ("rts.gc.nm.sync_max_elapsed_ms"   , Counter . nsToMs . Stats.nonmoving_gc_sync_max_elapsed_ns)
+     , ("rts.gc.nm.cpu_ms"                , Counter . nsToMs . Stats.nonmoving_gc_cpu_ns)
+     , ("rts.gc.nm.elapsed_ms"            , Counter . nsToMs . Stats.nonmoving_gc_elapsed_ns)
+     , ("rts.gc.nm.max_elapsed_ms"        , Counter . nsToMs . Stats.nonmoving_gc_max_elapsed_ns)
+# endif
+# endif
      ])
     getRTSStats
     where
@@ -501,6 +533,14 @@ emptyRTSStats = Stats.RTSStats
 # if MIN_VERSION_base(4,12,0)
     , init_cpu_ns                          = 0
     , init_elapsed_ns                      = 0
+# if MIN_VERSION_base(4,15,0)
+    , nonmoving_gc_sync_cpu_ns             = 0
+    , nonmoving_gc_sync_elapsed_ns         = 0
+    , nonmoving_gc_sync_max_elapsed_ns     = 0
+    , nonmoving_gc_cpu_ns                  = 0
+    , nonmoving_gc_elapsed_ns              = 0
+    , nonmoving_gc_max_elapsed_ns          = 0
+# endif
 # endif
 # endif
     , mutator_cpu_ns                       = 0
@@ -526,6 +566,13 @@ emptyGCDetails = Stats.GCDetails
     , gcdetails_par_max_copied_bytes      = 0
 # if MIN_VERSION_base(4,11,0)
     , gcdetails_par_balanced_copied_bytes = 0
+# if MIN_VERSION_base(4,15,0)
+    , gcdetails_nonmoving_gc_sync_cpu_ns  = 0
+    , gcdetails_nonmoving_gc_sync_elapsed_ns = 0
+# if MIN_VERSION_base(4,18,0)
+    , gcdetails_block_fragmentation_bytes = 0
+# endif
+# endif
 # endif
     , gcdetails_sync_elapsed_ns           = 0
     , gcdetails_cpu_ns                    = 0
