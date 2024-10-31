@@ -198,14 +198,14 @@ register :: T.Text
          -> IO ()
 register name sample store = do
     atomicModifyIORef (storeState store) $ \ state@State{..} ->
-        case M.member name stateMetrics of
-            False -> let !state' = state {
+        if M.member name stateMetrics
+            then alreadyInUseError name
+            else let !state' = state {
                                stateMetrics = M.insert name
                                               (Left sample)
                                               stateMetrics
                              }
                      in (state', ())
-            True  -> alreadyInUseError name
 
 -- | Raise an exception indicating that the metric name is already in
 -- use.
@@ -331,16 +331,6 @@ createDistribution name store = do
 -- easily be added to a metrics store by calling their register
 -- function.
 
-#if MIN_VERSION_base(4,10,0)
--- | Convert nanoseconds to milliseconds.
-nsToMs :: Int64 -> Int64
-nsToMs s = round (realToFrac s / (1000000.0 :: Double))
-#else
--- | Convert seconds to milliseconds.
-sToMs :: Double -> Int64
-sToMs s = round (s * 1000.0)
-#endif
-
 -- | Register a number of metrics related to garbage collector
 -- behavior.
 --
@@ -420,7 +410,7 @@ sToMs s = round (s * 1000.0)
 -- 1 for a maximally sequential run and approaches the number of
 -- threads (set by the RTS flag @-N@) for a maximally parallel run.
 registerGcMetrics :: Store -> IO ()
-registerGcMetrics store =
+registerGcMetrics =
     registerGroup
 #if MIN_VERSION_base(4,10,0)
     (M.fromList
@@ -449,6 +439,10 @@ registerGcMetrics store =
      , ("rts.gc.par_max_bytes_copied"     , Gauge . fromIntegral . Stats.cumulative_par_max_copied_bytes)
      ])
     getRTSStats
+    where
+    -- | Convert nanoseconds to milliseconds.
+    nsToMs :: Int64 -> Int64
+    nsToMs s = round (realToFrac s / (1000000.0 :: Double))
 #else
     (M.fromList
      [ ("rts.gc.bytes_allocated"          , Counter . Stats.bytesAllocated)
@@ -472,8 +466,11 @@ registerGcMetrics store =
      , ("rts.gc.par_max_bytes_copied"     , Gauge . Stats.parMaxBytesCopied)
      ])
     getGcStats
+    where
+    -- | Convert seconds to milliseconds.
+    sToMs :: Double -> Int64
+    sToMs s = round (s * 1000.0)
 #endif
-    store
 
 #if MIN_VERSION_base(4,10,0)
 -- | Get RTS statistics.
