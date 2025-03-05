@@ -45,8 +45,8 @@ library
     System.Metrics.ThreadId
 
   build-depends:
-      base                  >=4.6 && <4.21
-    , containers            >=0.5 && <0.8
+      base                  >=4.6 && <4.22
+    , containers            >=0.5 && <0.9
     , text                  <2.2
     , unordered-containers  <0.3
 
