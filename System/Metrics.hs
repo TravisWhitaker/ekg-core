@@ -619,7 +619,7 @@ getGcStats = Stats.getGCStats
 # endif
 
 -- | Helper to work around rename in GHC.Stats in base-4.6.
-gcParTotBytesCopied :: Stats.GCStats -> Int64
+-- gcParTotBytesCopied :: Stats.GCStats -> Int64
 # if MIN_VERSION_base(4,6,0)
 gcParTotBytesCopied = Stats.parTotBytesCopied
 # else
