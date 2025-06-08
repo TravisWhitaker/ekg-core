@@ -11,6 +11,7 @@
 #endif
 
 struct distrib {
+  // 0 -> unlocked; 1 -> locked
   HSINTTYPE lock;
   HSINTTYPE count;
   double mean;

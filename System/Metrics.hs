@@ -68,7 +68,6 @@ module System.Metrics
     , Value(..)
     ) where
 
-import Control.Applicative ((<$>))
 import Control.Monad (forM)
 import qualified Data.IntMap.Strict as IM
 import Data.IORef (IORef, atomicModifyIORef, newIORef, readIORef)
@@ -470,20 +469,16 @@ registerGcMetrics =
 #if MIN_VERSION_base(4,11,0)
      , ("rts.gc.par_balanced_bytes_copied", Gauge . fromIntegral . Stats.cumulative_par_balanced_copied_bytes)
 #if MIN_VERSION_base(4,15,0)
-     , ("rts.gc.nm.sync_cpu_ms"           , Counter . nsToMs . Stats.nonmoving_gc_sync_cpu_ns)
-     , ("rts.gc.nm.sync_elapsed_ms"       , Counter . nsToMs . Stats.nonmoving_gc_sync_elapsed_ns)
-     , ("rts.gc.nm.sync_max_elapsed_ms"   , Counter . nsToMs . Stats.nonmoving_gc_sync_max_elapsed_ns)
-     , ("rts.gc.nm.cpu_ms"                , Counter . nsToMs . Stats.nonmoving_gc_cpu_ns)
-     , ("rts.gc.nm.elapsed_ms"            , Counter . nsToMs . Stats.nonmoving_gc_elapsed_ns)
-     , ("rts.gc.nm.max_elapsed_ms"        , Counter . nsToMs . Stats.nonmoving_gc_max_elapsed_ns)
+     , ("rts.gc.nm.sync_cpu_ms"           , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_sync_cpu_ns)
+     , ("rts.gc.nm.sync_elapsed_ms"       , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_sync_elapsed_ns)
+     , ("rts.gc.nm.sync_max_elapsed_ms"   , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_sync_max_elapsed_ns)
+     , ("rts.gc.nm.cpu_ms"                , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_cpu_ns)
+     , ("rts.gc.nm.elapsed_ms"            , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_elapsed_ns)
+     , ("rts.gc.nm.max_elapsed_ms"        , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_max_elapsed_ns)
 # endif
 # endif
      ])
     getRTSStats
-    where
-    -- | Convert nanoseconds to milliseconds.
-    nsToMs :: Int64 -> Int64
-    nsToMs s = round (realToFrac s / (1000000.0 :: Double))
 #else
     (M.fromList
      [ ("rts.gc.bytes_allocated"          , Counter . Stats.bytesAllocated)
