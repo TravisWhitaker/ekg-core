@@ -481,11 +481,11 @@ registerGcMetrics =
     getRTSStats
 #else
     (M.fromList
-     [ ("rts.gc.bytes_allocated"          , Counter . Stats.bytesAllocated)
-     , ("rts.gc.num_gcs"                  , Counter . Stats.numGcs)
-     , ("rts.gc.num_bytes_usage_samples"  , Counter . Stats.numByteUsageSamples)
-     , ("rts.gc.cumulative_bytes_used"    , Counter . Stats.cumulativeBytesUsed)
-     , ("rts.gc.bytes_copied"             , Counter . Stats.bytesCopied)
+     [ ("rts.gc.bytes_allocated"          , Counter . fromIntegral . Stats.bytesAllocated)
+     , ("rts.gc.num_gcs"                  , Counter . fromIntegral . Stats.numGcs)
+     , ("rts.gc.num_bytes_usage_samples"  , Counter . fromIntegral . Stats.numByteUsageSamples)
+     , ("rts.gc.cumulative_bytes_used"    , Counter . fromIntegral . Stats.cumulativeBytesUsed)
+     , ("rts.gc.bytes_copied"             , Counter . fromIntegral . Stats.bytesCopied)
      , ("rts.gc.mutator_cpu_ms"           , Counter . sToMs . Stats.mutatorCpuSeconds)
      , ("rts.gc.mutator_wall_ms"          , Counter . sToMs . Stats.mutatorWallSeconds)
      , ("rts.gc.gc_cpu_ms"                , Counter . sToMs . Stats.gcCpuSeconds)
