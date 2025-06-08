@@ -36,7 +36,6 @@ import GHC.Prim
 #endif
 
 -- | A mutable, atomic integer.
---newtype Atomic = C (ForeignPtr Int64)
 data Atomic = C (MutableByteArray# RealWorld)
 
 -- | Create a new, zero initialized, atomic.

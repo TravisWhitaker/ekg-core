@@ -504,7 +504,7 @@ registerGcMetrics =
     getGcStats
     where
     -- | Convert seconds to milliseconds.
-    sToMs :: Double -> Int64
+    sToMs :: Double -> Int
     sToMs s = round (s * 1000.0)
 #endif
 
