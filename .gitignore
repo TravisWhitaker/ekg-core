@@ -13,3 +13,4 @@ examples/Group
 *.sublime-*
 dist-newstyle/
 cabal.project.local
+cabal.project.local~

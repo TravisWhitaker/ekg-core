@@ -155,18 +155,18 @@ newStore = do
 -- | Register a non-negative, monotonically increasing, integer-valued
 -- metric. The provided action to read the value must be thread-safe.
 -- Also see 'createCounter'.
-registerCounter :: T.Text   -- ^ Counter name
-                -> IO Int64 -- ^ Action to read the current metric value
-                -> Store    -- ^ Metric store
+registerCounter :: T.Text    -- ^ Counter name
+                -> IO Int64  -- ^ Action to read the current metric value
+                -> Store     -- ^ Metric store
                 -> IO ()
 registerCounter name sample store =
     register name (CounterS sample) store
 
 -- | Register an integer-valued metric. The provided action to read
 -- the value must be thread-safe. Also see 'createGauge'.
-registerGauge :: T.Text   -- ^ Gauge name
-              -> IO Int64 -- ^ Action to read the current metric value
-              -> Store    -- ^ Metric store
+registerGauge :: T.Text    -- ^ Gauge name
+              -> IO Int64  -- ^ Action to read the current metric value
+              -> Store     -- ^ Metric store
               -> IO ()
 registerGauge name sample store =
     register name (GaugeS sample) store

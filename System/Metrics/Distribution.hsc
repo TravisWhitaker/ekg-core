@@ -162,6 +162,8 @@ int64ToDouble i =
 {-# INLINE int64ToDouble #-}
 
 -- | Add the same value to the distribution N times.
+--   Mean and variance are computed according to
+--   http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm
 addN :: Distribution -> Double -> Int64 -> IO ()
 addN distribution (D## val) (I64## n) = IO $ \s ->
     case myStripe distribution of { (IO myStripe') ->
@@ -194,6 +196,11 @@ addN distribution (D## val) (I64## n) = IO $ \s ->
     case spinUnlock mba s14 of { s15 ->
     (## s15, () ##) }}}}}}}}}}}}}}}}}}}}}}}}}}}}
 
+-- | Combine 'b' with 'a', writing the result in 'a'. Takes the lock of
+--   'b' while combining, but doesn't otherwise modify 'b'. 'a' is
+--   assumed to not be used concurrently.
+--   See also:
+--   http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
 combine :: Distrib -> Distrib -> IO ()
 combine (Distrib bMBA) (Distrib aMBA) = IO $ \s ->
     case spinLock bMBA s of { s1 ->
@@ -232,6 +239,8 @@ combine (Distrib bMBA) (Distrib aMBA) = IO $ \s ->
     case readDoubleArray## bMBA minPos' s13 of { (## s14, bMin ##) ->
     case writeDoubleArray## aMBA minPos' bMin s14 of { s15 ->
     case maxPos of { (I## maxPos') ->
+    -- This is slightly hacky, but ok: see
+    -- 813aa426be78e8abcf1c7cdd43433bcffa07828e
     case readDoubleArray## bMBA maxPos' s15 of { (## s16, bMax ##) ->
     case writeDoubleArray## aMBA maxPos' bMax s16 of { s17 ->
     case spinUnlock bMBA s17 of { s18 ->
