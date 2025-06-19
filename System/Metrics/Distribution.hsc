@@ -44,6 +44,11 @@ import Data.Array
 import System.Metrics.Distribution.Internal (Stats(..))
 import System.Metrics.ThreadId
 
+-- Three cases for these definitions
+-- 64-bit, GHC has Int64
+-- 64-bit, GHC doesn't have Int64
+-- 32-bit
+
 -- 64-bit machine, Int ~ Int64, do it the fast way:
 #if SIZEOF_HSINT == 8
 
@@ -87,7 +92,25 @@ writeInt64Array = writeIntArray##
 #endif
 
 #else
+-- NB: I've only tested these with the WASM backend:
+ 
+intToInt64 :: Int## -> Int64##
+intToInt64 = intToInt64##
+
+plusInt64 :: Int64## -> Int64## -> Int64##
+plusInt64 = plusInt64##
+
+eqInt64 :: Int64## -> Int64## -> Int##
+eqInt64 = eqInt64##
+
+readInt64Array :: MutableByteArray## d -> Int## -> State## d -> (## State## d, Int64## ##)
+readInt64Array = readInt64Array##
+
+writeInt64Array :: MutableByteArray## d -> Int## -> Int64## -> State## d -> State## d
+writeInt64Array = writeInt64Array##
+
 -- I don't know a better way on 32-bit machines...
+int64ToDouble :: Int64## -> Double##
 int64ToDouble i =
     case fromIntegral (I64## i) of (D## d) -> d
 #endif
