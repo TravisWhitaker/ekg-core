@@ -73,16 +73,16 @@ writeInt64Array = writeInt64Array##
 
 #else
 int64ToDouble :: Int## -> Double##
-int64ToDouble i = int2Double## i
+int64ToDouble = int2Double##
 
 intToInt64 :: Int## -> Int##
 intToInt64 i = i
 
 plusInt64 :: Int## -> Int## -> Int##
-plusInt64 a b = a +## b
+plusInt64 = (+##)
 
 eqInt64 :: Int## -> Int## -> Int##
-eqInt64 a b = a ==## b
+eqInt64 = (==##)
 
 readInt64Array :: MutableByteArray## d -> Int## -> State## d -> (## State## d, Int## ##)
 readInt64Array = readIntArray##
