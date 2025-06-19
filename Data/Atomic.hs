@@ -17,16 +17,28 @@ module Data.Atomic
     , subtract
     ) where
 
-import Prelude hiding (read, subtract)
-
-import GHC.Int
-import GHC.IO
-import GHC.Prim
-
 #include "MachDeps.h"
 #ifndef SIZEOF_HSINT
 #error "MachDeps.h didn't define SIZEOF_HSINT"
 #endif
+
+import Prelude hiding (read, subtract)
+
+import GHC.Int
+
+#if SIZEOF_HSINT == 8
+
+-- 64-bit imports
+import GHC.IO
+import GHC.Prim
+
+#else
+
+-- 32-bit imports
+import Data.IORef
+
+#endif
+
 
 -- 64-bit machine, Int ~ Int64, do it the fast way:
 #if SIZEOF_HSINT == 8
@@ -85,11 +97,11 @@ write (C ior) !i = atomicWriteIORef ior i
 
 -- | Increase the atomic by the given amount.
 add :: Atomic -> Int64 -> IO ()
-add (C ior) !i = atomicModifyIORef' ior (\!n -> (n+i, ()))
+add (C ior) !i = atomicModifyIORef' ior (\(!n) -> (n+i, ()))
 
 -- | Decrease the atomic by the given amount.
 subtract :: Atomic -> Int64 -> IO ()
-subtract (C ior) !i = atomicModifyIORef' ior (\!n -> (n-i, ()))
+subtract (C ior) !i = atomicModifyIORef' ior (\(!n) -> (n-i, ()))
 
 #endif
 

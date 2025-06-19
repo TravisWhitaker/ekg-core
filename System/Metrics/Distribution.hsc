@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE ExtendedLiterals #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -91,7 +90,7 @@ newDistrib = IO $ \s ->
     -- probably unecessary
     case atomicWriteIntArray## mba lockPos' 0## s1 of { s2 ->
     case countPos of { (I## countPos') ->
-    case writeInt64Array## mba countPos' 0##Int64 s2 of { s3 ->
+    case writeInt64Array## mba countPos' (intToInt64## 0##) s2 of { s3 ->
     case meanPos of { (I## meanPos') ->
     case writeDoubleArray## mba meanPos' 0.0#### s3 of { s4 ->
     case sumSqDeltaPos of { (I## sumSqDeltaPos') ->
@@ -228,7 +227,7 @@ combine (Distrib bMBA) (Distrib aMBA) = IO $ \s ->
                )
          ) of { sumSqDelta' ->
     case writeInt64Array## aMBA countPos' count' s7 of { s8 ->
-    case (case eqInt64## count' 0##Int64 of { 0## -> mean'; _ -> 0.0#### }) of { writeMean ->
+    case (case eqInt64## count' (intToInt64## 0##) of { 0## -> mean'; _ -> 0.0#### }) of { writeMean ->
     case writeDoubleArray## aMBA meanPos' writeMean s8 of { s9 ->
     case writeDoubleArray## aMBA sumSqDeltaPos' sumSqDelta' s9 of { s10 ->
     case sumPos of { (I## sumPos') ->
