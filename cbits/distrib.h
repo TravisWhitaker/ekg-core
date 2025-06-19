@@ -13,7 +13,7 @@
 struct distrib {
   // 0 -> unlocked; 1 -> locked
   HSINTTYPE lock;
-  HSINTTYPE count;
+  int64_t count;
   double mean;
   double sum_sq_delta;
   double sum;

@@ -69,6 +69,7 @@ module System.Metrics
     ) where
 
 import Control.Monad (forM)
+import Data.Int (Int64)
 import qualified Data.IntMap.Strict as IM
 import Data.IORef (IORef, atomicModifyIORef, newIORef, readIORef)
 import qualified Data.HashMap.Strict as M
@@ -131,8 +132,8 @@ data GroupSampler = forall a. GroupSampler
      }
 
 -- TODO: Rename this to Metric and Metric to SampledMetric.
-data MetricSampler = CounterS !(IO Int)
-                   | GaugeS !(IO Int)
+data MetricSampler = CounterS !(IO Int64)
+                   | GaugeS !(IO Int64)
                    | LabelS !(IO T.Text)
                    | DistributionS !(IO Distribution.Stats)
 
@@ -154,18 +155,18 @@ newStore = do
 -- | Register a non-negative, monotonically increasing, integer-valued
 -- metric. The provided action to read the value must be thread-safe.
 -- Also see 'createCounter'.
-registerCounter :: T.Text  -- ^ Counter name
-                -> IO Int  -- ^ Action to read the current metric value
-                -> Store   -- ^ Metric store
+registerCounter :: T.Text   -- ^ Counter name
+                -> IO Int64 -- ^ Action to read the current metric value
+                -> Store    -- ^ Metric store
                 -> IO ()
 registerCounter name sample store =
     register name (CounterS sample) store
 
 -- | Register an integer-valued metric. The provided action to read
 -- the value must be thread-safe. Also see 'createGauge'.
-registerGauge :: T.Text  -- ^ Gauge name
-              -> IO Int  -- ^ Action to read the current metric value
-              -> Store   -- ^ Metric store
+registerGauge :: T.Text   -- ^ Gauge name
+              -> IO Int64 -- ^ Action to read the current metric value
+              -> Store    -- ^ Metric store
               -> IO ()
 registerGauge name sample store =
     register name (GaugeS sample) store
@@ -329,16 +330,6 @@ createDistribution name store = do
 -- easily be added to a metrics store by calling their register
 -- function.
 
-#if MIN_VERSION_base(4,10,0)
--- | Convert nanoseconds to milliseconds.
-nsToMs :: Int -> Int
-nsToMs s = round (realToFrac s / (1000000.0 :: Double))
-#else
--- | Convert seconds to milliseconds.
-sToMs :: Double -> Int
-sToMs s = round (s * 1000.0)
-#endif
-
 -- | Register a number of metrics related to garbage collector
 -- behavior.
 --
@@ -447,15 +438,15 @@ registerGcMetrics =
      , ("rts.gc.cumulative_bytes_used"    , Counter . fromIntegral . Stats.cumulative_live_bytes)
      , ("rts.gc.bytes_copied"             , Counter . fromIntegral . Stats.copied_bytes)
 #if MIN_VERSION_base(4,12,0)
-     , ("rts.gc.init_cpu_ms"              , Counter . nsToMs . fromIntegral . Stats.init_cpu_ns)
-     , ("rts.gc.init_wall_ms"             , Counter . nsToMs . fromIntegral . Stats.init_elapsed_ns)
+     , ("rts.gc.init_cpu_ms"              , Counter . nsToMs . Stats.init_cpu_ns)
+     , ("rts.gc.init_wall_ms"             , Counter . nsToMs . Stats.init_elapsed_ns)
 #endif
-     , ("rts.gc.mutator_cpu_ms"           , Counter . nsToMs . fromIntegral . Stats.mutator_cpu_ns)
-     , ("rts.gc.mutator_wall_ms"          , Counter . nsToMs . fromIntegral . Stats.mutator_elapsed_ns)
-     , ("rts.gc.gc_cpu_ms"                , Counter . nsToMs . fromIntegral . Stats.gc_cpu_ns)
-     , ("rts.gc.gc_wall_ms"               , Counter . nsToMs . fromIntegral . Stats.gc_elapsed_ns)
-     , ("rts.gc.cpu_ms"                   , Counter . nsToMs . fromIntegral . Stats.cpu_ns)
-     , ("rts.gc.wall_ms"                  , Counter . nsToMs . fromIntegral . Stats.elapsed_ns)
+     , ("rts.gc.mutator_cpu_ms"           , Counter . nsToMs . Stats.mutator_cpu_ns)
+     , ("rts.gc.mutator_wall_ms"          , Counter . nsToMs . Stats.mutator_elapsed_ns)
+     , ("rts.gc.gc_cpu_ms"                , Counter . nsToMs . Stats.gc_cpu_ns)
+     , ("rts.gc.gc_wall_ms"               , Counter . nsToMs . Stats.gc_elapsed_ns)
+     , ("rts.gc.cpu_ms"                   , Counter . nsToMs . Stats.cpu_ns)
+     , ("rts.gc.wall_ms"                  , Counter . nsToMs . Stats.elapsed_ns)
      , ("rts.gc.max_bytes_used"           , Gauge . fromIntegral . Stats.max_live_bytes)
      , ("rts.gc.max_large_bytes_used"     , Gauge . fromIntegral . Stats.max_large_objects_bytes)
      , ("rts.gc.max_compact_bytes_used"   , Gauge . fromIntegral . Stats.max_compact_bytes)
@@ -469,42 +460,46 @@ registerGcMetrics =
 #if MIN_VERSION_base(4,11,0)
      , ("rts.gc.par_balanced_bytes_copied", Gauge . fromIntegral . Stats.cumulative_par_balanced_copied_bytes)
 #if MIN_VERSION_base(4,15,0)
-     , ("rts.gc.nm.sync_cpu_ms"           , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_sync_cpu_ns)
-     , ("rts.gc.nm.sync_elapsed_ms"       , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_sync_elapsed_ns)
-     , ("rts.gc.nm.sync_max_elapsed_ms"   , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_sync_max_elapsed_ns)
-     , ("rts.gc.nm.cpu_ms"                , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_cpu_ns)
-     , ("rts.gc.nm.elapsed_ms"            , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_elapsed_ns)
-     , ("rts.gc.nm.max_elapsed_ms"        , Counter . nsToMs . fromIntegral . Stats.nonmoving_gc_max_elapsed_ns)
+     , ("rts.gc.nm.sync_cpu_ms"           , Counter . nsToMs . Stats.nonmoving_gc_sync_cpu_ns)
+     , ("rts.gc.nm.sync_elapsed_ms"       , Counter . nsToMs . Stats.nonmoving_gc_sync_elapsed_ns)
+     , ("rts.gc.nm.sync_max_elapsed_ms"   , Counter . nsToMs . Stats.nonmoving_gc_sync_max_elapsed_ns)
+     , ("rts.gc.nm.cpu_ms"                , Counter . nsToMs . Stats.nonmoving_gc_cpu_ns)
+     , ("rts.gc.nm.elapsed_ms"            , Counter . nsToMs . Stats.nonmoving_gc_elapsed_ns)
+     , ("rts.gc.nm.max_elapsed_ms"        , Counter . nsToMs . Stats.nonmoving_gc_max_elapsed_ns)
 # endif
 # endif
      ])
     getRTSStats
+    where
+    -- | Convert nanoseconds to milliseconds.
+    nsToMs :: Int64 -> Int64
+    nsToMs s = round (realToFrac s / (1000000.0 :: Double))
 #else
     (M.fromList
-     [ ("rts.gc.bytes_allocated"          , Counter . fromIntegral . Stats.bytesAllocated)
-     , ("rts.gc.num_gcs"                  , Counter . fromIntegral . Stats.numGcs)
-     , ("rts.gc.num_bytes_usage_samples"  , Counter . fromIntegral . Stats.numByteUsageSamples)
-     , ("rts.gc.cumulative_bytes_used"    , Counter . fromIntegral . Stats.cumulativeBytesUsed)
-     , ("rts.gc.bytes_copied"             , Counter . fromIntegral . Stats.bytesCopied)
+     [ ("rts.gc.bytes_allocated"          , Counter . Stats.bytesAllocated)
+     , ("rts.gc.num_gcs"                  , Counter . Stats.numGcs)
+     , ("rts.gc.num_bytes_usage_samples"  , Counter . Stats.numByteUsageSamples)
+     , ("rts.gc.cumulative_bytes_used"    , Counter . Stats.cumulativeBytesUsed)
+     , ("rts.gc.bytes_copied"             , Counter . Stats.bytesCopied)
      , ("rts.gc.mutator_cpu_ms"           , Counter . sToMs . Stats.mutatorCpuSeconds)
      , ("rts.gc.mutator_wall_ms"          , Counter . sToMs . Stats.mutatorWallSeconds)
      , ("rts.gc.gc_cpu_ms"                , Counter . sToMs . Stats.gcCpuSeconds)
      , ("rts.gc.gc_wall_ms"               , Counter . sToMs . Stats.gcWallSeconds)
      , ("rts.gc.cpu_ms"                   , Counter . sToMs . Stats.cpuSeconds)
      , ("rts.gc.wall_ms"                  , Counter . sToMs . Stats.wallSeconds)
-     , ("rts.gc.max_bytes_used"           , Gauge . fromIntegral . Stats.maxBytesUsed)
-     , ("rts.gc.current_bytes_used"       , Gauge . fromIntegral . Stats.currentBytesUsed)
-     , ("rts.gc.current_bytes_slop"       , Gauge . fromIntegral . Stats.currentBytesSlop)
-     , ("rts.gc.max_bytes_slop"           , Gauge . fromIntegral . Stats.maxBytesSlop)
-     , ("rts.gc.peak_megabytes_allocated" , Gauge . fromIntegral . Stats.peakMegabytesAllocated)
-     , ("rts.gc.par_tot_bytes_copied"     , Gauge . fromIntegral . gcParTotBytesCopied)
-     , ("rts.gc.par_avg_bytes_copied"     , Gauge . fromIntegral . gcParTotBytesCopied)
-     , ("rts.gc.par_max_bytes_copied"     , Gauge . fromIntegral . Stats.parMaxBytesCopied)
+     , ("rts.gc.max_bytes_used"           , Gauge . Stats.maxBytesUsed)
+     , ("rts.gc.current_bytes_used"       , Gauge . Stats.currentBytesUsed)
+     , ("rts.gc.current_bytes_slop"       , Gauge . Stats.currentBytesSlop)
+     , ("rts.gc.max_bytes_slop"           , Gauge . Stats.maxBytesSlop)
+     , ("rts.gc.peak_megabytes_allocated" , Gauge . Stats.peakMegabytesAllocated)
+     , ("rts.gc.par_tot_bytes_copied"     , Gauge . gcParTotBytesCopied)
+     , ("rts.gc.par_avg_bytes_copied"     , Gauge . gcParTotBytesCopied)
+     , ("rts.gc.par_max_bytes_copied"     , Gauge . Stats.parMaxBytesCopied)
      ])
     getGcStats
     where
     -- | Convert seconds to milliseconds.
-    sToMs :: Double -> Int
+    sToMs :: Double -> Int64
     sToMs s = round (s * 1000.0)
 #endif
 
@@ -619,7 +614,7 @@ getGcStats = Stats.getGCStats
 # endif
 
 -- | Helper to work around rename in GHC.Stats in base-4.6.
--- gcParTotBytesCopied :: Stats.GCStats -> Int64
+gcParTotBytesCopied :: Stats.GCStats -> Int64
 # if MIN_VERSION_base(4,6,0)
 gcParTotBytesCopied = Stats.parTotBytesCopied
 # else
@@ -663,8 +658,8 @@ sampleGroups cbSamplers = concat `fmap` sequence (map runOne cbSamplers)
         return $! map (\ (n, f) -> (n, f a)) (M.toList groupSamplerMetrics)
 
 -- | The value of a sampled metric.
-data Value = Counter {-# UNPACK #-} !Int
-           | Gauge {-# UNPACK #-} !Int
+data Value = Counter {-# UNPACK #-} !Int64
+           | Gauge {-# UNPACK #-} !Int64
            | Label {-# UNPACK #-} !T.Text
            | Distribution !Distribution.Stats
            deriving (Eq, Show)

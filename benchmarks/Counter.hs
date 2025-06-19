@@ -14,7 +14,7 @@ main = do
     mapM_ (forkIO . work counter iters) locks
     mapM_ takeMVar locks
     fin <- C.read counter
-    when (fin /= (n * iters)) $
+    when (fin /= fromIntegral (n * iters)) $
         fail "Data.Atomic is broken!"
   where
     n = 100
