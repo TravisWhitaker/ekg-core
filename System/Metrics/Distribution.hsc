@@ -204,8 +204,9 @@ add distrib val = addN distrib val 1
 spinLock :: MutableByteArray## RealWorld -> State## RealWorld -> State## RealWorld
 spinLock mba = \s ->
     case casIntArray## mba (unI lockPos) 0## 1## s of { (## s1, r ##) ->
-    case r ==## 0## of { 0## ->
-    spinLock mba s1; _ -> s1 }}
+    case r of { 0## -> s1; _ ->
+    case yield## s1 of { s2 ->
+    spinLock mba s2 }}}
 
 {-# INLINE spinUnlock #-}
 spinUnlock :: MutableByteArray## RealWorld -> State## RealWorld -> State## RealWorld
