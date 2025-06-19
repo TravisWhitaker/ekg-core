@@ -36,13 +36,61 @@ import Prelude hiding (max, min, read, sum)
 import Foreign.Storable (sizeOf)
 
 import GHC.Float
-import GHC.Int
+import GHC.Int (Int(..), Int64(..))
 import GHC.IO
 import GHC.Prim
 
 import Data.Array
 import System.Metrics.Distribution.Internal (Stats(..))
 import System.Metrics.ThreadId
+
+-- 64-bit machine, Int ~ Int64, do it the fast way:
+#if SIZEOF_HSINT == 8
+
+#if MIN_VERSION_base(4,17,0)
+int64ToDouble :: Int64## -> Double##
+int64ToDouble i = int2Double## (int64ToInt## i)
+
+intToInt64 :: Int## -> Int64##
+intToInt64 = intToInt64##
+
+plusInt64 :: Int64## -> Int64## -> Int64##
+plusInt64 = plusInt64##
+
+eqInt64 :: Int64## -> Int64## -> Int##
+eqInt64 = eqInt64##
+
+readInt64Array :: MutableByteArray## d -> Int## -> State## d -> (## State## d, Int64## ##)
+readInt64Array = readInt64Array##
+
+writeInt64Array :: MutableByteArray## d -> Int## -> Int64## -> State## d -> State## d
+writeInt64Array = writeInt64Array##
+
+#else
+int64ToDouble :: Int## -> Double##
+int64ToDouble i = int2Double## i
+
+intToInt64 :: Int## -> Int##
+intToInt64 i = i
+
+plusInt64 :: Int## -> Int## -> Int##
+plusInt64 a b = a +## b
+
+eqInt64 :: Int## -> Int## -> Int##
+eqInt64 a b = a ==## b
+
+readInt64Array :: MutableByteArray## d -> Int## -> State## d -> (## State## d, Int## ##)
+readInt64Array = readIntArray##
+
+writeInt64Array :: MutableByteArray## d -> Int## -> Int## -> State## d -> State## d
+writeInt64Array = writeIntArray##
+#endif
+
+#else
+-- I don't know a better way on 32-bit machines...
+int64ToDouble i =
+    case fromIntegral (I64## i) of (D## d) -> d
+#endif
 
 -- | An metric for tracking events.
 newtype Distribution = Distribution { unD :: Array Stripe }
@@ -90,7 +138,7 @@ newDistrib = IO $ \s ->
     -- probably unecessary
     case atomicWriteIntArray## mba lockPos' 0## s1 of { s2 ->
     case countPos of { (I## countPos') ->
-    case writeInt64Array## mba countPos' (intToInt64## 0##) s2 of { s3 ->
+    case writeInt64Array mba countPos' (intToInt64 0##) s2 of { s3 ->
     case meanPos of { (I## meanPos') ->
     case writeDoubleArray## mba meanPos' 0.0#### s3 of { s4 ->
     case sumSqDeltaPos of { (I## sumSqDeltaPos') ->
@@ -148,17 +196,6 @@ spinUnlock mba = \s ->
     case writeIntArray## mba lockPos' 0## s of { s2 ->
     s2 }}
 
-int64ToDouble :: Int64## -> Double##
--- 64-bit machine, Int ~ Int64, do it the fast way:
-#if SIZEOF_HSINT == 8
-int64ToDouble i = int2Double## (int64ToInt## i)
-#else
--- I don't know a better way on 32-bit machines...
-int64ToDouble i =
-    case fromIntegral (I64## i) of (D## d) -> d
-#endif
-
-{-# INLINE int64ToDouble #-}
 
 -- | Add the same value to the distribution N times.
 --   Mean and variance are computed according to
@@ -169,7 +206,7 @@ addN distribution (D## val) (I64## n) = IO $ \s ->
     case myStripe' s of { (## s1, (Stripe (Distrib mba)) ##) ->
     case spinLock mba s1 of { s2 ->
     case countPos of { (I## countPos') ->
-    case readInt64Array## mba countPos' s2 of { (## s3, count ##) ->
+    case readInt64Array mba countPos' s2 of { (## s3, count ##) ->
     case meanPos of { (I## meanPos') ->
     case readDoubleArray## mba meanPos' s3 of { (## s4, mean ##) ->
     case sumSqDeltaPos of { (I## sumSqDeltaPos') ->
@@ -180,11 +217,11 @@ addN distribution (D## val) (I64## n) = IO $ \s ->
     case readDoubleArray## mba minPos' s6 of { (## s7, dMin ##) ->
     case maxPos of { (I## maxPos') ->
     case readDoubleArray## mba maxPos' s7 of { (## s8, dMax ##) ->
-    case plusInt64## count n of { count' ->
+    case plusInt64 count n of { count' ->
     case val -#### mean of { delta ->
     case mean +#### ((int64ToDouble n) *#### delta /#### (int64ToDouble count')) of { mean' ->
     case sumSqDelta +#### (delta *#### (val -#### mean') *#### (int64ToDouble n)) of { sumSqDelta' ->
-    case writeInt64Array## mba countPos' count' s8 of { s9 ->
+    case writeInt64Array mba countPos' count' s8 of { s9 ->
     case writeDoubleArray## mba meanPos' mean' s9 of { s10 ->
     case writeDoubleArray## mba sumSqDeltaPos' sumSqDelta' s10 of { s11 ->
     case writeDoubleArray## mba sumPos' (dSum +#### val) s11 of { s12 ->
@@ -204,9 +241,9 @@ combine :: Distrib -> Distrib -> IO ()
 combine (Distrib bMBA) (Distrib aMBA) = IO $ \s ->
     case spinLock bMBA s of { s1 ->
     case countPos of { (I## countPos') ->
-    case readInt64Array## aMBA countPos' s1 of { (## s2, aCount ##) ->
-    case readInt64Array## bMBA countPos' s2 of { (## s3, bCount ##) ->
-    case plusInt64## aCount bCount of { count' ->
+    case readInt64Array aMBA countPos' s1 of { (## s2, aCount ##) ->
+    case readInt64Array bMBA countPos' s2 of { (## s3, bCount ##) ->
+    case plusInt64 aCount bCount of { count' ->
     case meanPos of { (I## meanPos' ) ->
     case readDoubleArray## aMBA meanPos' s3 of { (## s4, aMean ##) ->
     case readDoubleArray## bMBA meanPos' s4 of { (## s5, bMean ##) ->
@@ -226,8 +263,8 @@ combine (Distrib bMBA) (Distrib aMBA) = IO $ \s ->
                      )
                )
          ) of { sumSqDelta' ->
-    case writeInt64Array## aMBA countPos' count' s7 of { s8 ->
-    case (case eqInt64## count' (intToInt64## 0##) of { 0## -> mean'; _ -> 0.0#### }) of { writeMean ->
+    case writeInt64Array aMBA countPos' count' s7 of { s8 ->
+    case (case eqInt64 count' (intToInt64 0##) of { 0## -> mean'; _ -> 0.0#### }) of { writeMean ->
     case writeDoubleArray## aMBA meanPos' writeMean s8 of { s9 ->
     case writeDoubleArray## aMBA sumSqDeltaPos' sumSqDelta' s9 of { s10 ->
     case sumPos of { (I## sumPos') ->
@@ -258,7 +295,7 @@ read distrib = do
         case sumPos of { (I## sumPos') ->
         case minPos of { (I## minPos') ->
         case maxPos of { (I## maxPos') ->
-        case readInt64Array## mba countPos' s of { (## s1, count ##) ->
+        case readInt64Array mba countPos' s of { (## s1, count ##) ->
         case readDoubleArray## mba meanPos' s1 of { (## s2, mean ##) ->
         case readDoubleArray## mba sumSqDeltaPos' s2 of { (## s3, sumSqDelta ##) ->
         case readDoubleArray## mba sumPos' s3 of { (## s4, dSum ##) ->

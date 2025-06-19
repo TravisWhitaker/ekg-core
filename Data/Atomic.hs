@@ -43,6 +43,20 @@ import Data.IORef
 -- 64-bit machine, Int ~ Int64, do it the fast way:
 #if SIZEOF_HSINT == 8
 
+#if MIN_VERSION_base(4,17,0)
+int64ToInt :: Int64# -> Int#
+int64ToInt = int64ToInt#
+
+intToInt64 :: Int# -> Int64#
+intToInt64 = intToInt64#
+#else
+int64ToInt :: Int# -> Int#
+int64ToInt i = i
+
+intToInt64 :: Int# -> Int#
+intToInt64 i = i
+#endif
+
 -- | A mutable, atomic integer.
 data Atomic = C (MutableByteArray# RealWorld)
 
@@ -50,30 +64,30 @@ data Atomic = C (MutableByteArray# RealWorld)
 new :: Int64 -> IO Atomic
 new (I64# n64) = IO $ \s ->
     case newByteArray# SIZEOF_HSINT# s of { (# s1, mba #) ->
-    case atomicWriteIntArray# mba 0# (int64ToInt# n64) s1 of { s2 ->
+    case atomicWriteIntArray# mba 0# (int64ToInt n64) s1 of { s2 ->
     (# s2, C mba #) }}
 
 read :: Atomic -> IO Int64
 read (C mba) = IO $ \s ->
     case atomicReadIntArray# mba 0# s of { (# s1, n #) ->
-    (# s1, I64# (intToInt64# n) #)}
+    (# s1, I64# (intToInt64 n) #)}
 
 -- | Set the atomic to the given value.
 write :: Atomic -> Int64 -> IO ()
 write (C mba) (I64# n64) = IO $ \s ->
-    case atomicWriteIntArray# mba 0# (int64ToInt# n64) s of { s1 ->
+    case atomicWriteIntArray# mba 0# (int64ToInt n64) s of { s1 ->
     (# s1, () #) }
 
 -- | Increase the atomic by the given amount.
 add :: Atomic -> Int64 -> IO ()
 add (C mba) (I64# n64) = IO $ \s ->
-    case fetchAddIntArray# mba 0# (int64ToInt# n64) s of { (# s1, _ #) ->
+    case fetchAddIntArray# mba 0# (int64ToInt n64) s of { (# s1, _ #) ->
     (# s1, () #) }
 
 -- | Decrease the atomic by the given amount.
 subtract :: Atomic -> Int64 -> IO ()
 subtract (C mba) (I64# n64) = IO $ \s ->
-    case fetchSubIntArray# mba 0# (int64ToInt# n64) s of { (# s1, _ #) ->
+    case fetchSubIntArray# mba 0# (int64ToInt n64) s of { (# s1, _ #) ->
     (# s1, () #) }
 
 #else
